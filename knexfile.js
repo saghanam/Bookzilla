@@ -4,9 +4,9 @@
  * @type { Object.<string, import("knex").Knex.Config> }
  */
 
-const path = require('path')
 const appDir = process.cwd();
-module.exports = {
+
+let config = {
   development: {
     client: 'postgresql',
     connection: {
@@ -16,10 +16,10 @@ module.exports = {
       password: ''
     },
     migrations : {
-      directory :  appDir + '/db/migrations'
+      directory :  appDir + '/src/db/migrations'
     },
     seeds: {
-      directory :  appDir + '/db/seeds'
+      directory :  appDir + '/src/db/seeds'
     }
   },
 
@@ -57,4 +57,5 @@ module.exports = {
     }
   }
 
-};
+}
+export default config;

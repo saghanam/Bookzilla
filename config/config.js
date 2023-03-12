@@ -1,4 +1,5 @@
 const environment = process.env.ENVIRONMENT || 'development'
-const config = require('../knexfile.js')[environment]
-console.log(config)
-module.exports = require('knex')(config)
+import config from '../knexfile.js'
+
+// module.exports = require('knex')(config)
+export default config[environment]
