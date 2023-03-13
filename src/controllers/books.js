@@ -2,7 +2,7 @@ import knex from "knex";
 import config from "../../config/config.js";
 const db = knex(config);
 
-class bookController {
+class BookController {
   async fetchAllBooks() {
     let dataArr = [];
     return db
@@ -17,28 +17,11 @@ class bookController {
         return dataArr;
       })
       .catch((err) => {
-        return err;
+        throw err;
       });
   }
 
-  async fetchBooksFromBookstore(store_id) {
-    let dataArr = [];
-    return db
-      .select()
-      .from("books")
-      .leftJoin("catalog", "books.id", "catalog.book_id")
-      .leftJoin("bookstore", "bookstore.id", "catalog.store_id")
-      .where({ "catalog.store_id": store_id })
-      .then((result) => {
-        result.forEach((val) => {
-          dataArr.push(val);
-        });
-        return dataArr;
-      })
-      .catch((err) => {
-        return err;
-      });
-  }
+
 
   checkIfBookstoreExists(stores) {
     stores = stores.map((val) => (val = val.store_name));
@@ -52,32 +35,11 @@ class bookController {
         return data;
       })
       .catch((err) => {
-        return err;
+        throw err;
       });
   }
 
-  async createBookstore(store) {
-    await db("bookstore")
-      .returning(["id", "store_name", "location"])
-      .insert(store)
-      .onConflict("store_name")
-      .merge()
-      .catch((err) => {
-        return err;
-      });
 
-    const stores = store.map((val) => (val = val.store_name));
-    return db("bookstore")
-      .select("store_name", "location")
-      .whereNotIn("store_name", stores)
-      .then((data) => {
-        // data = data.map((val) => (val = val.store_name));
-        return data;
-      })
-      .catch((err) => {
-        return err;
-      });
-  }
 
   async checkIfBookExists(book_name) {
     return await db("books")
@@ -89,7 +51,7 @@ class bookController {
         else return null;
       })
       .catch((err) => {
-        return err;
+        throw err;
       });
   }
 
@@ -102,7 +64,7 @@ class bookController {
         return status;
       })
       .catch((err) => {
-        return err;
+        throw err;
       });
   }
 
@@ -115,11 +77,10 @@ class bookController {
         return status;
       })
       .catch((err) => {
-        return err;
+        throw err;
       });
   }
 
-  // add promise.all for this
   async addBooks(bookData) {
     let { store_id, data } = bookData;
     data = Promise.all(
@@ -157,7 +118,7 @@ class bookController {
       let status = quantity > 0 ? "in_stock" : "out_of_stock";
       return status;
     } catch (err) {
-      return err;
+      throw err;
     }
   }
 
@@ -176,7 +137,7 @@ class bookController {
         return data;
       })
       .catch((err) => {
-        return err;
+        throw err;
       });
   }
 
@@ -193,7 +154,7 @@ class bookController {
         val.map((id) => data.edited.push(id.book_id));
       })
       .catch((err) => {
-        return err;
+        throw err;
       });
     books.data.map(async (val) => {
       let status = await this.checkStock(val.quantity);
@@ -205,7 +166,7 @@ class bookController {
           console.log(val);
         })
         .catch((err) => {
-          return err;
+          throw err;
         });
     });
 
@@ -227,13 +188,13 @@ class bookController {
       .where({ id })
       .del()
       .catch((err) => {
-        return err;
+        throw err;
       });
     await db("catalog")
       .where({ book_id: id })
       .del()
       .catch((err) => {
-        return err;
+        throw err;
       });
     const data = { data: "Deleted" };
     return data;
@@ -251,7 +212,7 @@ class bookController {
         val.map((id) => data.deleted.push(id.book_id));
       })
       .catch((err) => {
-        return err;
+        throw err;
       });
 
     books.data.map(async (val) => {
@@ -259,13 +220,13 @@ class bookController {
         .where({ id: val.book_id })
         .del()
         .catch((err) => {
-          return err;
+          throw err;
         });
       await db("catalog")
         .where({ book_id: val.book_id })
         .del()
         .catch((err) => {
-          return err;
+          throw err;
         });
     });
 
@@ -291,7 +252,7 @@ class bookController {
             .where({ quantity: 0 })
             .update({ status: "out_of_stock" })
             .catch((err) => {
-              return err;
+              throw err;
             });
           return dataArr;
         });
@@ -299,4 +260,4 @@ class bookController {
   }
 }
 
-export default new bookController();
+export default new BookController();
