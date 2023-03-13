@@ -1,50 +1,105 @@
 import { Router } from "express";
 import BookController from "../controllers/books.js";
 
-import Joi from 'joi';
-import * as Errors from "../middleware/errorHandling.js"
+import Joi from "joi";
+import * as Errors from "../middleware/errorHandling.js";
 
 const router = Router();
-const bookStoreSchema = Joi.object({
-  data: Joi.array().items(Joi.object().keys({
-      store_name: Joi.string().required(),
-      location: Joi.string().required()
-  })).required()
-})
+const bookSchema = Joi.object({
+  store_id: Joi.number().required(),
+  data: Joi.array()
+    .items(
+      Joi.object().keys({
+        book_name: Joi.string().required(),
+        quantity: Joi.number().required(),
+      })
+    )
+    .required(),
+});
 
-router.get("/book/fetchAllBooks", async (req, res) => {
+const editId = Joi.number().required();
+
+const editBookSchema = Joi.object({
+  store_id: Joi.number().required(),
+  quantity: Joi.number().required(),
+});
+const multipleBookSchema = Joi.object({
+  store_id: Joi.number().required(),
+  data: Joi.array()
+    .items(
+      Joi.object().keys({
+        book_id: Joi.number().required(),
+        quantity: Joi.number().required(),
+      })
+    )
+    .required(),
+});
+
+const deleteBookSchema = Joi.object({
+  data: Joi.array().items(
+    Joi.object({
+      book_id: Joi.number().required(),
+    })
+  ),
+});
+
+const EditEvent = (body, id) => {
+  console.log(body, id);
+  const { error } = editId.validate(id);
+  console.log(error);
+  const { error: editSchemaError } = editBookSchema.validate(body);
+  return error || editSchemaError;
+};
+
+router.get("/", async (req, res) => {
   console.log("Inside route");
   const books = await BookController.fetchAllBooks();
   return res.status(200).send(books);
 });
 
-
-router.post("/book/addBooks", async (req, res) => {
-  const books = await BookController.addBooks(req.body);
-  return res.status(200).send(books);
+router.post("/addToStore", async (req, res) => {
+  try {
+    const { error } = bookSchema.validate(req.body);
+    if (error) throw new Errors.BadRequestError(error.message);
+    const books = await BookController.addBooks(req.body);
+    return res.status(200).send(books);
+  } catch (error) {
+    return res.status(error.statusCode).send(error.message);
+  }
 });
 
-router.put("/book/edit/:id", async (req, res) => {
-  const { quantity, store_id } = req.body;
-  const { id } = req.params;
-  const data = { quantity, book_id: id, store_id };
-  const book = await BookController.editBook(data);
-  return res.status(200).send(book);
+router.put("/edit/:id", async (req, res) => {
+  try {
+    const error = EditEvent(req.body, req.params.id);
+    if (error) throw new Errors.BadRequestError(error.message);
+    const { quantity, store_id } = req.body;
+    const { id } = req.params;
+    const data = { quantity, book_id: id, store_id };
+    const book = await BookController.editBook(data);
+    return res.status(200).send(book);
+  } catch (error) {
+    return res.status(error.statusCode).send(error.message);
+  }
 });
 
-router.put("/book/editBooks", async (req, res) => {
+router.put("/editBooks", async (req, res) => {
+  const { error } = multipleBookSchema.validate(req.body);
+  if (error) throw new Errors.BadRequestError(error.message);
   const books = await BookController.editBooks(req.body);
   return res.status(200).send(books);
 });
 
-router.delete("/book/delete/:id", async (req, res) => {
-  console.log(req.params.id);
+router.delete("/delete/:id", async (req, res) => {
+  const { error } = editId.validate(req.params.id);
+  if (error) throw new Errors.BadRequestError(error.message);
   const { id } = req.params;
   const book = await BookController.deleteBook(id);
   return res.status(200).send(book);
 });
 
-router.delete("/book/deleteBooks", async (req, res) => {
+router.delete("/deleteBooks", async (req, res) => {
+  const { error } = deleteBookSchema.validate(req.body);
+  if (error) throw new Errors.BadRequestError(error.message);
   const books = await BookController.deleteBooks(req.body);
   return res.status(200).send(books);
 });

@@ -123,13 +123,14 @@ class BookController {
   }
 
   async editBook(book) {
+    console.log(book)
     const bookExists = await this.checkBookInStore({
       book_id: book.book_id,
       store_id: book.store_id,
     });
     if (!bookExists) return "No book exists in store with current ID";
     let status = await this.checkStock(book.quantity);
-    await db("catalog")
+    return await db("catalog")
       .returning(["book_id", "quantity", "status"])
       .where({ book_id: book.book_id, store_id: book.store_id })
       .update({ status, quantity: book.quantity })
@@ -204,9 +205,9 @@ class BookController {
     let data = { deleted: [], nonExistentId: [], message: "Deleted" };
 
     let bookId = books.data.map((val) => (val = val.book_id));
-    await db("book")
+    await db("books")
       .returning("id")
-      .whereIn("book_id", bookId)
+      .whereIn("id", bookId)
       .then((val) => {
         console.log(val);
         val.map((id) => data.deleted.push(id.book_id));

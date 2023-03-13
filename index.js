@@ -14,4 +14,12 @@ app.use(express.json());
 app.use(express.urlencoded({extended:true}));
 app.use("/", router);
 
+
+process.on('SIGTERM', () => {
+    debug('SIGTERM signal received: closing HTTP server')
+    server.close(() => {
+      debug('HTTP server closed')
+    })
+  })
+
 app.listen(port, () => console.log("Listening on port 3000"));
