@@ -57,18 +57,18 @@ router.get("/", async (req, res) => {
   return res.status(200).send(books);
 });
 
-router.post("/addToStore", async (req, res) => {
+router.post("/addToStore", async (req, res,next) => {
   try {
     const { error } = bookSchema.validate(req.body);
     if (error) throw new Errors.BadRequestError(error.message);
     const books = await BookController.addBooks(req.body);
     return res.status(200).send(books);
   } catch (error) {
-    return res.status(error.statusCode).send(error.message);
+    next(error)
   }
 });
 
-router.put("/edit/:id", async (req, res) => {
+router.put("/edit/:id", async (req, res,next) => {
   try {
     const error = EditEvent(req.body, req.params.id);
     if (error) throw new Errors.BadRequestError(error.message);
@@ -78,30 +78,54 @@ router.put("/edit/:id", async (req, res) => {
     const book = await BookController.editBook(data);
     return res.status(200).send(book);
   } catch (error) {
-    return res.status(error.statusCode).send(error.message);
+    next(error)
   }
 });
 
-router.put("/editBooks", async (req, res) => {
-  const { error } = multipleBookSchema.validate(req.body);
-  if (error) throw new Errors.BadRequestError(error.message);
-  const books = await BookController.editBooks(req.body);
-  return res.status(200).send(books);
+router.put("/editBooks", async (req, res,next) => {
+  try {
+    const { error } = multipleBookSchema.validate(req.body);
+    if (error) throw new Errors.BadRequestError(error.message);
+    const books = await BookController.editBooks(req.body);
+    return res.status(200).send(books);
+  } catch (error) {
+    next(error)
+  }
 });
 
-router.delete("/delete/:id", async (req, res) => {
-  const { error } = editId.validate(req.params.id);
-  if (error) throw new Errors.BadRequestError(error.message);
-  const { id } = req.params;
-  const book = await BookController.deleteBook(id);
-  return res.status(200).send(book);
+router.delete("/delete/:id", async (req, res,next) => {
+  try {
+    const { error } = editId.validate(req.params.id);
+    if (error) throw new Errors.BadRequestError(error.message);
+    const { id } = req.params;
+    const book = await BookController.deleteBook(id);
+    return res.status(200).send(book);
+  } catch (error) {
+    next(error)
+  }
 });
 
-router.delete("/deleteBooks", async (req, res) => {
-  const { error } = deleteBookSchema.validate(req.body);
-  if (error) throw new Errors.BadRequestError(error.message);
-  const books = await BookController.deleteBooks(req.body);
-  return res.status(200).send(books);
+router.delete("/deleteBooks", async (req, res,next) => {
+  try {
+    const { error } = deleteBookSchema.validate(req.body);
+    if (error) throw new Errors.BadRequestError(error.message);
+    const books = await BookController.deleteBooks(req.body);
+    return res.status(200).send(books);
+  } catch (error) {
+    next(error)
+  }
 });
+
+
+router.post("/updateStatus", async (req, res,next) => {
+  try {
+    await BookController.updateStatus();
+    return res.status(200).send("Status updated");
+  } catch (error) {
+    next(error)
+  }
+});
+
+
 
 export default router;

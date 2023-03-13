@@ -21,8 +21,6 @@ class BookController {
       });
   }
 
-
-
   checkIfBookstoreExists(stores) {
     stores = stores.map((val) => (val = val.store_name));
     console.log(stores);
@@ -38,8 +36,6 @@ class BookController {
         throw err;
       });
   }
-
-
 
   async checkIfBookExists(book_name) {
     return await db("books")
@@ -123,7 +119,6 @@ class BookController {
   }
 
   async editBook(book) {
-    console.log(book)
     const bookExists = await this.checkBookInStore({
       book_id: book.book_id,
       store_id: book.store_id,
@@ -182,23 +177,27 @@ class BookController {
   }
 
   async deleteBook(id) {
-    const bookExists = await this.checkBookDatabase(id);
-    console.log(bookExists);
-    if (!bookExists) return "No book exists in store with current ID";
-    await db("books")
-      .where({ id })
-      .del()
-      .catch((err) => {
-        throw err;
-      });
-    await db("catalog")
-      .where({ book_id: id })
-      .del()
-      .catch((err) => {
-        throw err;
-      });
-    const data = { data: "Deleted" };
-    return data;
+    try {
+      const bookExists = await this.checkBookDatabase(id);
+      console.log(bookExists);
+      if (!bookExists) return "No book exists in store with current ID";
+      await db("books")
+        .where({ id })
+        .del()
+        .catch((err) => {
+          throw err;
+        });
+      await db("catalog")
+        .where({ book_id: id })
+        .del()
+        .catch((err) => {
+          throw err;
+        });
+      const data = { data: "Deleted" };
+      return data;
+    } catch (error) {
+      return Promise.reject(error);
+    }
   }
 
   async deleteBooks(books) {

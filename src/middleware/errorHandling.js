@@ -20,16 +20,6 @@ export class BadRequestError extends Error {
     }
   }
   
-  export class ForbiddenError extends Error {
-    statusCode;
-    type;
-    constructor(message) {
-      super(`${message}`);
-      Error.captureStackTrace(this, ForbiddenError);
-      this.statusCode = 403;
-      this.type = 'Forbidden';
-    }
-  }
   
   export class NotFoundError extends Error {
     statusCode;

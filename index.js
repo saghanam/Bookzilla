@@ -1,6 +1,7 @@
 import express from "express";
 import router from "./src/routes/index.js";
 const app = express();
+import error from './src/middleware/error.js'
 
 import * as dotenv from 'dotenv'
 dotenv.config()
@@ -13,6 +14,13 @@ console.log(process.env.PORT)
 app.use(express.json());
 app.use(express.urlencoded({extended:true}));
 app.use("/", router);
+app.use('*', (req, res) => {
+    return res.status(404).send({
+      message: `Path ${req.originalUrl} not found`,
+      statusCode: 404,
+    });
+  });
+  app.use(error)
 
 
 process.on('SIGTERM', () => {
