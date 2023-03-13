@@ -27,7 +27,6 @@ router.get("/book/fetchBook", async (req, res) => {
 
 router.post("/addBookstore", async (req, res) => {
   let data = req.body.data;
-  console.log(data);
   const store = await bookController.createBookstore(data);
   return res.status(200).send(store);
 });

@@ -11,14 +11,13 @@ class bookController {
       .leftJoin("catalog", "books.id", "catalog.book_id")
       .leftJoin("bookstore", "bookstore.id", "catalog.store_id")
       .then((result) => {
-        result
-          .forEach((val) => {
-            dataArr.push(val);
-          })
-          .catch((err) => {
-            return err;
-          });
+        result.forEach((val) => {
+          dataArr.push(val);
+        });
         return dataArr;
+      })
+      .catch((err) => {
+        return err;
       });
   }
 
@@ -31,22 +30,25 @@ class bookController {
       .leftJoin("bookstore", "bookstore.id", "catalog.store_id")
       .where({ "catalog.store_id": store_id })
       .then((result) => {
-        result
-          .forEach((val) => {
-            dataArr.push(val);
-          })
-          .catch((err) => {
-            return err;
-          });
+        result.forEach((val) => {
+          dataArr.push(val);
+        });
         return dataArr;
+      })
+      .catch((err) => {
+        return err;
       });
   }
 
-  async createBookstore(store) {
-    await db("bookstore")
-      .returning(["id", "store_name", "location"])
-      .insert(store)
+  checkIfBookstoreExists(stores) {
+    stores = stores.map((val) => (val = val.store_name));
+    console.log(stores);
+    return db("bookstore")
+      .select("store_name")
+      .whereIn("store_name", stores)
       .then((data) => {
+        console.log(data);
+        data = data.map((val) => (val = val.store_name));
         return data;
       })
       .catch((err) => {
@@ -54,22 +56,99 @@ class bookController {
       });
   }
 
-  // add promise.all for this
-  async addBooks(data) {
-    let store_id = data.store_id;
-    let books = data.data;
-    books.map(async (val) => {
-      let book_name = val.book_name;
-      let status = await this.checkStock(val.quantity);
-      const [{ id }] = await db("books").returning("id").insert({ book_name });
-      await db("catalog").insert({
-        book_id: id,
-        store_id,
-        quantity: val.quantity,
-        status,
+  async createBookstore(store) {
+    await db("bookstore")
+      .returning(["id", "store_name", "location"])
+      .insert(store)
+      .onConflict("store_name")
+      .merge()
+      .catch((err) => {
+        return err;
       });
-    });
-    return books;
+
+    const stores = store.map((val) => (val = val.store_name));
+    return db("bookstore")
+      .select("store_name", "location")
+      .whereNotIn("store_name", stores)
+      .then((data) => {
+        // data = data.map((val) => (val = val.store_name));
+        return data;
+      })
+      .catch((err) => {
+        return err;
+      });
+  }
+
+  async checkIfBookExists(book_name) {
+    return await db("books")
+      .select("id")
+      .where({ book_name })
+      .then((data) => {
+        const status = data.length ? true : false;
+        if (status) return data[0].id;
+        else return null;
+      })
+      .catch((err) => {
+        return err;
+      });
+  }
+
+  async checkBookInStore(bookDetails) {
+    return await db("catalog")
+      .select("id")
+      .where({ book_id: bookDetails.book_id, store_id: bookDetails.store_id })
+      .then((data) => {
+        const status = data.length ? true : false;
+        return status;
+      })
+      .catch((err) => {
+        return err;
+      });
+  }
+
+  async checkBookDatabase(id) {
+    return await db("books")
+      .select("id")
+      .where({ id })
+      .then((data) => {
+        let status = data.length ? true : false;
+        return status;
+      })
+      .catch((err) => {
+        return err;
+      });
+  }
+
+  // add promise.all for this
+  async addBooks(bookData) {
+    let { store_id, data } = bookData;
+    data = Promise.all(
+      data.map(async (val) => {
+        let book_name = val.book_name;
+        let status = await this.checkStock(val.quantity);
+        let id = await this.checkIfBookExists(book_name);
+        if (!id) {
+          [{ id }] = await db("books").returning("id").insert({ book_name });
+        }
+        const bookExists = await this.checkBookInStore({
+          book_id: id,
+          store_id,
+        });
+        val["message"] = bookExists
+          ? "Already exists in store"
+          : "Added to store";
+        if (!bookExists) {
+          await db("catalog").insert({
+            book_id: id,
+            store_id,
+            quantity: val.quantity,
+            status,
+          });
+        }
+        return val;
+      })
+    );
+    return data;
   }
 
   checkStock(quantity) {
@@ -83,6 +162,11 @@ class bookController {
   }
 
   async editBook(book) {
+    const bookExists = await this.checkBookInStore({
+      book_id: book.book_id,
+      store_id: book.store_id,
+    });
+    if (!bookExists) return "No book exists in store with current ID";
     let status = await this.checkStock(book.quantity);
     await db("catalog")
       .returning(["book_id", "quantity", "status"])
@@ -96,27 +180,49 @@ class bookController {
       });
   }
 
-  editBooks(books) {
-    try {
-      const { store_id } = books;
-      books.data.map(async (val) => {
-        let status = await this.checkStock(val.quantity);
-        await db("catalog")
-          .returning(["book_id", "quantity", "status"])
-          .where({ book_id: val.book_id, store_id })
-          .update({ status, quantity: val.quantity })
-          .catch((err) => {
-            return err;
-          });
+  async editBooks(books) {
+    const { store_id } = books;
+    let data = { edited: [], nonExistentId: [], message: "Updated" };
+
+    let bookId = books.data.map((val) => (val = val.book_id));
+    await db("catalog")
+      .returning("book_id")
+      .whereIn("book_id", bookId)
+      .then((val) => {
+        console.log(val);
+        val.map((id) => data.edited.push(id.book_id));
+      })
+      .catch((err) => {
+        return err;
       });
-      const data = { data: "Updated" };
-      return data;
-    } catch (err) {
-      return err;
-    }
+    books.data.map(async (val) => {
+      let status = await this.checkStock(val.quantity);
+      await db("catalog")
+        .returning(["book_id", "quantity", "status"])
+        .where({ book_id: val.book_id, store_id })
+        .update({ status, quantity: val.quantity })
+        .then((val) => {
+          console.log(val);
+        })
+        .catch((err) => {
+          return err;
+        });
+    });
+
+    bookId = books.data.filter(function (book) {
+      return !data.edited.includes(book.book_id);
+    });
+
+    bookId.map((val) => data.nonExistentId.push(val.book_id));
+
+    console.log(data);
+    return data;
   }
 
   async deleteBook(id) {
+    const bookExists = await this.checkBookDatabase(id);
+    console.log(bookExists);
+    if (!bookExists) return "No book exists in store with current ID";
     await db("books")
       .where({ id })
       .del()
@@ -134,6 +240,20 @@ class bookController {
   }
 
   async deleteBooks(books) {
+    let data = { deleted: [], nonExistentId: [], message: "Deleted" };
+
+    let bookId = books.data.map((val) => (val = val.book_id));
+    await db("book")
+      .returning("id")
+      .whereIn("book_id", bookId)
+      .then((val) => {
+        console.log(val);
+        val.map((id) => data.deleted.push(id.book_id));
+      })
+      .catch((err) => {
+        return err;
+      });
+
     books.data.map(async (val) => {
       await db("books")
         .where({ id: val.book_id })
@@ -148,7 +268,12 @@ class bookController {
           return err;
         });
     });
-    const data = { data: "Deleted" };
+
+    bookId = books.data.filter(function (book) {
+      return !data.deleted.includes(book.book_id);
+    });
+
+    bookId.map((val) => data.nonExistentId.push(val.book_id));
     return data;
   }
 
